@@ -4,7 +4,6 @@ project(chess_renderer LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ── SDL2 pulled at configure-time ────────────────────────────────
 include(FetchContent)
 FetchContent_Declare(
   SDL2
@@ -13,20 +12,29 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL2)
 
-# ── build the executable ─────────────────────────────────────────
+FetchContent_Declare(
+  SDL2_image
+  GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
+  GIT_TAG        release-2.8.2
+)
+FetchContent_MakeAvailable(SDL2_image)
+
 add_executable(chess-renderer
-    src/main.cpp                  # <- keep main at top level of src
+    src/main.cpp
+    src/game.cpp
+    src/engine/board.cpp
     src/ui/renderer.cpp
 )
 
-# Allow #include "renderer.h" from anywhere inside src/
 target_include_directories(chess-renderer PRIVATE src)
 
-# Link SDL2 (handles frameworks / DLLs on each OS)
-target_link_libraries(chess-renderer PRIVATE SDL2::SDL2main SDL2::SDL2)
+target_link_libraries(chess-renderer PRIVATE
+    SDL2::SDL2main
+    SDL2::SDL2
+    SDL2_image::SDL2_image
+)
 
-# ── copy assets next to the output binary ────────────────────────
 add_custom_command(TARGET chess-renderer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/src/ui/assets          # ← source path
-            $<TARGET_FILE_DIR:chess-renderer>/assets)  # ← destination
+            ${CMAKE_SOURCE_DIR}/src/ui/assets
+            $<TARGET_FILE_DIR:chess-renderer>/assets)

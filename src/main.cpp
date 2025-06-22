@@ -1,8 +1,8 @@
 #include <SDL.h>
-#include "ui/renderer.h"
+#include "game.h"
 
 int main()
 {
-    Renderer r;
-    r.startApp();
+    Game g;
+    g.run();
 }
