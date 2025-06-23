@@ -11,8 +11,29 @@ Board::Board(const std::string& fen)
     initializeFromFen();
 }
 
-uint8_t Board::getPieceAt(int index) const {
+bool Board::isEmpty(int file, int rank) const {
+    int index = fileRankToIndex(file, rank);
+    return piece::getTypeID(boardArr_m[index]) == 0;
+}
+
+uint8_t Board::getPieceAt(int file, int rank) const {
+    int index = fileRankToIndex(file, rank);
     return boardArr_m[index];
+}
+
+void Board::makeMove(int startFile, int startRank, int endFile, int endRank) {
+    int startIndex = fileRankToIndex(startFile, startRank);
+    int endIndex = fileRankToIndex(endFile, endRank);
+
+    boardArr_m[endIndex] = boardArr_m[startIndex];
+    boardArr_m[startIndex] = 0;
+}
+
+int Board::fileRankToIndex(int file, int rank) const {
+    if (file > 7 || file < 0 || rank > 7 || rank < 0) {
+        throw std::invalid_argument("file and rank must be between 0 and 7 inclusive");
+    }
+    return file + rank*8;
 }
 
 void Board::validateFen() {

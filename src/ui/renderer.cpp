@@ -40,17 +40,17 @@ Renderer::Renderer() {
 Renderer::~Renderer() {
     if (app_m.renderer) SDL_DestroyRenderer(app_m.renderer);
     if (app_m.window) SDL_DestroyWindow(app_m.window);
-    for (auto& [_, texture] : piece_textures_m) SDL_DestroyTexture(texture);
+    for (auto& [_, texture] : pieceTextures_m) SDL_DestroyTexture(texture);
     SDL_Quit();
 }
 
-void Renderer::draw(const Board& board) {
+void Renderer::draw(const Board& board, const MouseState& mouse) {
     SDL_SetRenderDrawColor(app_m.renderer, 255, 255, 255, 255);
     SDL_RenderClear(app_m.renderer);
 
     drawBoard();
-    drawSelection();
-    drawPieces(board);
+    drawSelection(board, mouse);
+    drawPieces(board, mouse);
 
     SDL_RenderPresent(app_m.renderer);
 }
@@ -80,18 +80,20 @@ void Renderer::initSDL() {
     }
 
     // TODO make a helper to do this
-    piece_textures_m['p'] = loadTexture(app_m.renderer, "wP.png");
-    piece_textures_m['b'] = loadTexture(app_m.renderer, "wB.png");
-    piece_textures_m['k'] = loadTexture(app_m.renderer, "wK.png");
-    piece_textures_m['n'] = loadTexture(app_m.renderer, "wN.png");
-    piece_textures_m['q'] = loadTexture(app_m.renderer, "wQ.png");
-    piece_textures_m['r'] = loadTexture(app_m.renderer, "wr.png");
-    piece_textures_m['P'] = loadTexture(app_m.renderer, "bP.png");
-    piece_textures_m['B'] = loadTexture(app_m.renderer, "bB.png");
-    piece_textures_m['K'] = loadTexture(app_m.renderer, "bK.png");
-    piece_textures_m['N'] = loadTexture(app_m.renderer, "bN.png");
-    piece_textures_m['Q'] = loadTexture(app_m.renderer, "bQ.png");
-    piece_textures_m['R'] = loadTexture(app_m.renderer, "bR.png");
+    pieceTextures_m['p'] = loadTexture(app_m.renderer, "wP.png");
+    pieceTextures_m['b'] = loadTexture(app_m.renderer, "wB.png");
+    pieceTextures_m['k'] = loadTexture(app_m.renderer, "wK.png");
+    pieceTextures_m['n'] = loadTexture(app_m.renderer, "wN.png");
+    pieceTextures_m['q'] = loadTexture(app_m.renderer, "wQ.png");
+    pieceTextures_m['r'] = loadTexture(app_m.renderer, "wr.png");
+    pieceTextures_m['P'] = loadTexture(app_m.renderer, "bP.png");
+    pieceTextures_m['B'] = loadTexture(app_m.renderer, "bB.png");
+    pieceTextures_m['K'] = loadTexture(app_m.renderer, "bK.png");
+    pieceTextures_m['N'] = loadTexture(app_m.renderer, "bN.png");
+    pieceTextures_m['Q'] = loadTexture(app_m.renderer, "bQ.png");
+    pieceTextures_m['R'] = loadTexture(app_m.renderer, "bR.png");
+    circleTexture_m = loadTexture(app_m.renderer, "bigCircle.png");
+    dotTexture_m = loadTexture(app_m.renderer, "blackCircle.png");
 }
 
 void Renderer::drawBoard() {
@@ -109,31 +111,47 @@ void Renderer::drawBoard() {
     }
 }
 
-void Renderer::drawSelection() {
-    if (select.selected) {
-        bool dark = (select.x + select.y) % 2 != 0;
-        SDL_SetRenderDrawColor(app_m.renderer, 
-            45,
-            15,
-            134,
-            255);
-        SDL_Rect Rect{select.x*tile_size_m, select.y*tile_size_m, tile_size_m, tile_size_m};
-        SDL_RenderFillRect(app_m.renderer, &Rect);
+void Renderer::drawSelection(const Board& board, const MouseState& mouse) {
+    if (mouse.isPressed()) {
+        int file = mouse.getxPressed(true);
+        int rank = mouse.getyPressed(true);
+        if (board.isEmpty(file, rank)) {return;}
+        SDL_Rect dst{file * tile_size_m, abs(rank-7) * tile_size_m, tile_size_m, tile_size_m};
+        SDL_RenderCopy(app_m.renderer,
+                    circleTexture_m, 
+                    nullptr, &dst);
     }
 }
 
-void Renderer::drawPieces(const Board& board) {
-    for (int i = 0; i < 64; ++i) {
-        int file = i % 8;
-        int rank = 7 - i/8;
-        char piece = pieceToChar(board.getPieceAt(i));
-        // std::cout << (int)board.getPieceAt(i) << std::endl;
-        SDL_Rect dst{file * tile_size_m, rank * tile_size_m, tile_size_m, tile_size_m};
-        SDL_RenderCopy(app_m.renderer,
-                      piece_textures_m[piece], 
-                      nullptr, &dst);
-    }
+void Renderer::drawPieces(const Board& board, const MouseState& mouse) {
+    bool renderSelected;
+    char pieceSelected;
+    for (int file = 0; file < 8; ++file) {
+        for (int rank = 0; rank < 8; ++rank) {
+            if (board.isEmpty(file, rank)) {
+                continue;
+            }
 
-    int file = 0, rank = 0;
+            char piece = pieceToChar(board.getPieceAt(file, rank));
+
+            if (mouse.isPressed() && mouse.getxPressed(true) == file && mouse.getyPressed(true) == rank) {
+                renderSelected = true;
+                pieceSelected = piece;
+                continue;
+            }
+            SDL_Rect dst{file * tile_size_m, abs(rank-7) * tile_size_m, tile_size_m, tile_size_m};
+            SDL_RenderCopy(app_m.renderer,
+                        pieceTextures_m[piece], 
+                        nullptr, &dst);
+        }
+    }
+    if (renderSelected) {
+        int x = mouse.getxWhilePressed() - tile_size_m/2;
+        int y = mouse.getyWhilePressed() - tile_size_m/2;
+        SDL_Rect dst{x, y, tile_size_m, tile_size_m};
+        SDL_RenderCopy(app_m.renderer,
+                    pieceTextures_m[pieceSelected], 
+                    nullptr, &dst);
+    }
 }
 

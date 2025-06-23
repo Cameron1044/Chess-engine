@@ -24,6 +24,7 @@ add_executable(chess-renderer
     src/game.cpp
     src/engine/board.cpp
     src/ui/renderer.cpp
+    src/ui/mouseState.cpp
 )
 
 target_include_directories(chess-renderer PRIVATE src)

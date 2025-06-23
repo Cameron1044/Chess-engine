@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include <string_view>
 #include <iostream>
 #include <unordered_map>
@@ -9,8 +10,12 @@
 class Board {
     public:
         explicit Board(const std::string& fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        uint8_t getPieceAt(int index) const;
+        bool isEmpty(int file, int rank) const;
+        uint8_t getPieceAt(int file, int rank) const;
+        void makeMove(int startFile, int startRank, int endFile, int endRank);
+        
     private:
+        int fileRankToIndex(int file, int rank) const;
         void validateFen();
         void initializeFromFen();
 
