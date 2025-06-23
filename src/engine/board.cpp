@@ -31,7 +31,8 @@ void Board::makeMove(int startFile, int startRank, int endFile, int endRank) {
 
 int Board::fileRankToIndex(int file, int rank) const {
     if (file > 7 || file < 0 || rank > 7 || rank < 0) {
-        throw std::invalid_argument("file and rank must be between 0 and 7 inclusive");
+        std::cerr << "Invalid Argument: file and rank must be between 0 and 7 inclusive\n";
+        std::exit(EXIT_FAILURE);
     }
     return file + rank*8;
 }
