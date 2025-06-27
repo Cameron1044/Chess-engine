@@ -6,7 +6,6 @@ void MouseState::setPressed(int x, int y) {
     yPressed_m = y;
     xWhilePressed_m = xPressed_m;
     yWhilePressed_m = yPressed_m;
-    // std::cout << xPressed_m << " " << yPressed_m << "\n";
 }
 
 void MouseState::setNotPressed(int x, int y){

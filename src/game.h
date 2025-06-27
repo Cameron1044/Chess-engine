@@ -14,9 +14,8 @@ class Game {
         void handleEvent(const SDL_Event&);
         void handleSelection();
         // void onSquareClicked(int file, int rank);
-
         
-        Board board_m;//{"rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"};
+        Board board_m; //{"rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"};
         Renderer view_m;
         MouseState mouse_m;
         bool running_m = true;

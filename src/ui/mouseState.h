@@ -20,8 +20,11 @@ class MouseState {
         int getyWhilePressed() const;
 
     private:
-        int xPressed_m, yPressed_m;
-        int xReleased_m, yReleased_m;
-        int xWhilePressed_m, yWhilePressed_m;
-        bool isPressed_m;
+        int xPressed_m = 0;
+        int yPressed_m = 0;
+        int xReleased_m = 0;
+        int yReleased_m = 0;
+        int xWhilePressed_m = 0;
+        int yWhilePressed_m = 0;
+        bool isPressed_m = false;
 };
