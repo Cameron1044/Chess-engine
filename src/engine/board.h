@@ -1,10 +1,7 @@
 #pragma once
 
-#include <stdexcept>
-#include <string_view>
-#include <iostream>
-#include <unordered_map>
 #include <cstdint>
+
 #include <piece_utils.h>
 
 class Board {

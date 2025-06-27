@@ -1,5 +1,7 @@
 #include "ui/mouseState.h"
 
+#include <cstdlib>
+
 void MouseState::setPressed(int x, int y) {
     isPressed_m = true;
     xPressed_m = x;

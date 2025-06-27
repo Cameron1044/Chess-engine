@@ -1,10 +1,7 @@
 #pragma once
 
-#include <format>
+#include <array>
 #include <unordered_map>
-
-#include <SDL.h>
-#include <SDL_image.h>
 
 #include "engine/board.h"
 #include "ui/mouseState.h"

@@ -1,5 +1,7 @@
 #include <game.h>
 
+#include <SDL.h>
+
 void Game::run() {
     while(running_m) {
         moveEventFlag_m = false;

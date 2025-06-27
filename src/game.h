@@ -1,7 +1,5 @@
 #pragma once
 
-#include <SDL.h>
-#include <iostream>
 #include "ui/renderer.h"
 #include "ui/mouseState.h"
 #include "engine/board.h"

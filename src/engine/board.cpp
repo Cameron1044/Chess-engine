@@ -1,5 +1,8 @@
 #include <engine/board.h>
 
+#include <stdexcept>
+#include <cctype>
+
 namespace {
     constexpr int ctoi(char c) noexcept {return c - '0';}
 }
