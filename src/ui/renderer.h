@@ -2,36 +2,53 @@
 
 #include <array>
 #include <unordered_map>
+#include <SDL.h>
+#include <optional>
+#include <iostream>
+#include <vector>
 
+#include "chess.h"
 #include "engine/board.h"
-#include "ui/mouseState.h"
 #include "ui/SDL_RAII.h"
+
+struct Color {
+    int R = 0;
+    int G = 0;
+    int B = 0;
+};
 
 class Renderer {
     public:
-        Renderer();
-        ~Renderer();
-        void draw(const Board& board, const MouseState& mouse);
-        
+        Renderer() {initSDL();}
+        ~Renderer() {SDL_Quit();}
+
+        void beginFrame();
+        void endFrame();
+
+        void drawBoard();
+        void drawSelection(const chess::Tile& tile, const Board& board, const std::vector<chess::Tile>& legalMoves);
+        void drawPieces(const Board& board, const std::optional<chess::Tile>& selectedTile = std::nullopt);
+        void drawPieceAtCoord(const Board& board, const chess::Tile& tile, const chess::Coord& coord);
+    
     private:
         void initSDL();
 
-        // Drawers
-        void drawBoard();
-        void drawSelection(const Board& board, const MouseState& mouse);
-        void drawPieces(const Board& board, const MouseState& mouse);
-
         // Draw helpers
-        void drawTile(int file, int rank, const std::array<int, 3>& RGB);
-        void drawTexture(int x, int y, const sdlw::TexturePtr& texture);
+        void drawTile(chess::Tile tile, const Color& C);
+        void drawTextureAtCoord(int x, int y, const sdlw::TexturePtr& texture);
+        void drawTextureOnTile(chess::Tile tile, const sdlw::TexturePtr& texture);
 
-        const int tile_size_m = 100;
+        sdlw::WindowPtr window_;
+        sdlw::RendererPtr renderer_;
 
-        sdlw::WindowPtr window_m;
-        sdlw::RendererPtr renderer_m;
+        // Colors
+        Color lightTile_{235,236,208};
+        Color darkTile_{115,149,82};
+        Color lightTileSelected_{245,246,131};
+        Color darkTileSelected_{185,202,67};
 
         // Textures
-        std::unordered_map<char, sdlw::TexturePtr> pieceTextures_m;
-        sdlw::TexturePtr circleTexture_m;
-        sdlw::TexturePtr dotTexture_m;
+        std::unordered_map<char, sdlw::TexturePtr> pieceTextures_;
+        sdlw::TexturePtr circleTexture_;
+        sdlw::TexturePtr dotTexture_;
 };

@@ -23,11 +23,13 @@ add_executable(chess-renderer
     src/main.cpp
     src/game.cpp
     src/engine/board.cpp
+    src/engine/moveGen.cpp
     src/ui/renderer.cpp
-    src/ui/mouseState.cpp
 )
 
 target_include_directories(chess-renderer PRIVATE src)
+
+target_include_directories(chess-renderer PRIVATE ${SDL2_SOURCE_DIR}/include/SDL2)
 
 target_link_libraries(chess-renderer PRIVATE
     SDL2::SDL2main

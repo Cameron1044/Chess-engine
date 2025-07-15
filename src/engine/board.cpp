@@ -1,4 +1,4 @@
-#include <engine/board.h>
+#include "engine/board.h"
 
 #include <stdexcept>
 #include <cctype>
@@ -8,34 +8,34 @@ namespace {
 }
 
 Board::Board(const std::string& fen)
-    : fen_m(fen)
+    : fen_(fen)
 {
     validateFen();
     initializeFromFen();
 }
 
-bool Board::isEmpty(int file, int rank) const {
-    int index = fileRankToIndex(file, rank);
-    return piece::getTypeID(boardArr_m[index]) == 0;
+bool Board::isEmptyAt(int index) const {
+    return piece::getType(boardArr_[index]) == piece::NONE;
 }
 
-uint8_t Board::getPieceAt(int file, int rank) const {
-    int index = fileRankToIndex(file, rank);
-    return boardArr_m[index];
+bool Board::isEmptyAt(chess::Tile tile) const {
+    return isEmptyAt(indexOf(tile));
 }
 
-void Board::makeMove(int startFile, int startRank, int endFile, int endRank) {
-    int startIndex = fileRankToIndex(startFile, startRank);
-    int endIndex = fileRankToIndex(endFile, endRank);
-
-    boardArr_m[endIndex] = boardArr_m[startIndex];
-    boardArr_m[startIndex] = 0;
+uint8_t Board::getPieceAt(int index) const {
+    return boardArr_[index];
 }
 
-int Board::fileRankToIndex(int file, int rank) const {
-    if (file > 7 || file < 0 || rank > 7 || rank < 0)
-        throw std::runtime_error("Invalid Argument: file and rank must be between 0 and 7 inclusive");
-    return file + rank*8;
+uint8_t Board::getPieceAt(chess::Tile tile) const {
+    return getPieceAt(indexOf(tile));
+}
+
+void Board::makeMove(chess::Tile start, chess::Tile end) {
+    int startIndex = chess::indexOf(start);
+    int endIndex = chess::indexOf(end);
+
+    boardArr_[endIndex] = boardArr_[startIndex] | piece::HAS_MOVED;
+    boardArr_[startIndex] = piece::NONE;
 }
 
 void Board::validateFen() {
@@ -43,8 +43,9 @@ void Board::validateFen() {
 }
 
 void Board::initializeFromFen() {
+    std::array<uint8_t, 64> temp = {0};
     int i = 0;
-    for (auto c : fen_m) {
+    for (auto c : fen_) {
         if (c == '/') {
             continue;
         } else if (c == ' ') {
@@ -52,9 +53,14 @@ void Board::initializeFromFen() {
         } else if (isdigit(c)) { 
             i+=ctoi(c);
         } else {
-            uint8_t piece = piece::charToInt(std::tolower(c)) | (std::islower(c) ? piece::WHITE : piece::BLACK);
-            boardArr_m[i] = piece;
+            uint8_t piece = piece::fromChar(std::tolower(c)) | (std::islower(c) ? piece::WHITE : piece::BLACK);
+            temp[i] = piece;
             ++i;
         }
+    }
+
+    for (int j = 0; j < 64; ++j) {
+        int sq0x88 = j + (j & ~7);
+        boardArr_[sq0x88] = temp[j];
     }
 }

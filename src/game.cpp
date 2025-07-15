@@ -1,61 +1,103 @@
 #include <game.h>
-
 #include <SDL.h>
+#include <iostream>
 
 void Game::run() {
-    while(running_m) {
-        moveEventFlag_m = false;
+    while(running_) {
+        view_.beginFrame();
+        view_.drawBoard();
+
         for (SDL_Event e; SDL_PollEvent(&e); ) {
             handleEvent(e);
         }
-        handleSelection();
-        view_m.draw(board_m, mouse_m);
+
+        if (selection_) {
+            view_.drawSelection(*selection_, board_, selectionLegalMoves_);
+        }
+
+        if (selection_ && mouse_.down) {
+            view_.drawPieces(board_, selection_);
+            view_.drawPieceAtCoord(board_, *selection_, mouse_.coord);
+        } else {
+            view_.drawPieces(board_);
+        }
+
+        view_.endFrame();
     }
 }
 
-void Game::handleSelection() {
-    // Temp logic before moveGen and validMove are implemented
-    if (moveEventFlag_m) {
-        int startFile = mouse_m.getxPressed(true);
-        int startRank = mouse_m.getyPressed(true);
-        if (board_m.isEmpty(startFile, startRank)) {return;}
-
-        int endFile = mouse_m.getxReleased(true);
-        int endRank = mouse_m.getyReleased(true);
-        if (board_m.isEmpty(endFile, endRank)) {
-            board_m.makeMove(startFile, startRank, endFile, endRank);
-            return;
-        }
-
-        if ((piece::COLOR_MASK & board_m.getPieceAt(startFile, startRank)) != (piece::COLOR_MASK & board_m.getPieceAt(endFile, endRank))) {
-            board_m.makeMove(startFile, startRank, endFile, endRank);
-            return;
-        }
+bool Game::attemptMakeMove(chess::Tile tile) {
+    if (std::find(selectionLegalMoves_.begin(), selectionLegalMoves_.end(), tile) != selectionLegalMoves_.end()) {
+        board_.makeMove(*selection_, tile);
+        return true;
     }
+    return false;
 }
 
 void Game::handleEvent(const SDL_Event& e) {
     switch (e.type) {
         case SDL_QUIT:
-            running_m = false;
+            running_ = false;
             break;
+
         case SDL_MOUSEBUTTONDOWN:
             if (e.button.button == SDL_BUTTON_LEFT) {
-                mouse_m.setPressed(e.button.x, e.button.y);
+                chess::Tile tile = chess::tileOf({e.button.x, e.button.y});
+                handleClick(tile);
+                mouse_.coord = {e.button.x, e.button.y};
+                mouse_.down = true;
             }
             break;
+
         case SDL_MOUSEBUTTONUP:
             if (e.button.button == SDL_BUTTON_LEFT) {
-                mouse_m.setNotPressed(e.button.x, e.button.y);
-                moveEventFlag_m = true;
+                chess::Tile tile = chess::tileOf({e.button.x, e.button.y});
+                handleRelease(tile);
+                mouse_.down = false;
             }
             break;
+
         case SDL_MOUSEMOTION:
-            if (mouse_m.isPressed()) {
-                int xPos, yPos;
-                SDL_GetMouseState(&xPos, &yPos);
-                mouse_m.setWhilePressed(xPos, yPos);
+            if (mouse_.down) {
+                SDL_GetMouseState(&mouse_.coord.x, &mouse_.coord.y);
             }
             break;
+    }
+}
+
+void Game::handleClick(chess::Tile tile) {
+    // Clicked same square. Do nothing
+    if (selection_ && *selection_ == tile)
+        return;
+
+    // Moved piece. Deselect
+    if (selection_ && attemptMakeMove(tile)) {
+        selection_.reset();
+        return;
+    }
+
+    // Tile is empty. Deselect
+    if (board_.isEmptyAt(tile)) {
+        selection_.reset();
+        return;
+    }
+
+    // Make selection. Generate moves
+    selection_ = tile;
+    moveGen_.genLegalMovesAtTile(*selection_, board_, selectionLegalMoves_);
+}
+
+void Game::handleRelease(chess::Tile tile) {
+    bool draggingPiece = selection_ && mouse_.down;
+
+    // Piece was released on same tile. Do nothing
+    if (draggingPiece && *selection_ == tile) {
+        return;
+    }
+
+    // Piece was released and moved. Deselect
+    if (draggingPiece && attemptMakeMove(tile)) {
+        selection_.reset();
+        return;
     }
 }
