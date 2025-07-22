@@ -24,6 +24,8 @@ add_executable(chess-renderer
     src/game.cpp
     src/engine/board.cpp
     src/engine/moveGen.cpp
+    src/engine/engine.cpp
+    src/engine/move.cpp
     src/ui/renderer.cpp
 )
 

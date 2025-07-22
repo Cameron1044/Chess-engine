@@ -5,21 +5,37 @@
 #include <array>
 #include <iostream>
 #include "engine/board.h"
+#include "engine/move.h"
 
 class MoveGen {
     public:
-        void genLegalMovesAtTile(chess::Tile tile, const Board& board, std::vector<chess::Tile>& legalMoves);
-        std::vector<int> genLegalMovesAt(int index, const Board& board);
+        MoveGen(Board board) : boardPtr_(std::make_shared<Board>(board)) {}
+        MoveGen(BoardPtr boardPtr) : boardPtr_(boardPtr) {}
+
+        void getPseudoMovesAtTile(chess::Tile tile, MoveList& legalMoves) const;
+        MoveList getPseudoMovesAt(int from) const;
+
+        // getters
+        // MoveList getPseudoPawn(int from, MoveList& legalmoves) const;
+        // MoveList getPseudoKnight(int from, MoveList& legalmoves) const;
+        // MoveList getPseudoBishop(int from, MoveList& legalmoves) const;
+        // MoveList getPseudoRook(int from, MoveList& legalmoves) const;
+        // MoveList getPseudoQueen(int from, MoveList& legalmoves) const;
+        // MoveList getPseudoKing(int from, MoveList& legalmoves) const;
 
     private:
-        void genLateral(int index, std::vector<int>& legalmoves, const Board& board);
-        void genDiagonal(int index, std::vector<int>& legalmoves, const Board& board);
-        //void genMovesFromMoveArray(int index, std::vector<int>& legalmoves, const Board& board, const std::vector<int>& moveArray);
+        // appender helpers
+        void addContinuousFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 4>& offsetList) const;
+        void addFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 8>& offsetList) const;
 
-        void genPawn(int index, std::vector<int>& legalmoves, const Board& board);
-        void genKnight(int index, std::vector<int>& legalmoves, const Board& board);
-        void genBishop(int index, std::vector<int>& legalmoves, const Board& board);
-        void genRook(int index, std::vector<int>& legalmoves, const Board& board);
-        void genQueen(int index, std::vector<int>& legalmoves, const Board& board);
-        void genKing(int index, std::vector<int>& legalmoves, const Board& board);
+        // appenders
+        void addPseudoPawn(int from, MoveList& legalmoves) const;
+        void addPseudoKnight(int from, MoveList& legalmoves) const;
+        void addPseudoBishop(int from, MoveList& legalmoves) const;
+        void addPseudoRook(int from, MoveList& legalmoves) const;
+        void addPseudoQueen(int from, MoveList& legalmoves) const;
+        void addPseudoKing(int from, MoveList& legalmoves) const;  
+
+        // member variables
+        BoardPtr boardPtr_;
 };

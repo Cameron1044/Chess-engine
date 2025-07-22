@@ -1,9 +1,11 @@
 #pragma once
 
 #include "chess.h"
+#include "engine/move.h"
 #include <cstdint>
 #include <string>
 #include <format>
+#include <memory>
 
 #include <piece_utils.h>
 
@@ -20,6 +22,15 @@
 00 01 02 03 04 05 06 07 | 08 09 0A 0B 0C 0D 0E 0F
 */
 
+struct EnPassant {
+    int epPos = 0;
+    int pawnPos = 0;
+};
+
+// struct UnMakeMove {
+//     int 
+// }
+
 class Board {
     public:
         explicit Board(const std::string& fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -27,15 +38,33 @@ class Board {
         bool isEmptyAt(chess::Tile tile) const;
         uint8_t getPieceAt(int Index) const;
         uint8_t getPieceAt(chess::Tile tile) const;
-        void makeMove(chess::Tile start, chess::Tile end);
+        void makeMove(Move move);
+
+        int getWEval() {return wVal_;}
+        int getBEval() {return bVal_;}
+
+        int getEp() {return ep_.epPos;}
+        bool getIsWhite() {return isWhiteTurn_;}
         
     private:
+        void handleEnPassant(Move move);
+        void handleCastle(Move move);
         void validateFen();
         void initializeFromFen();
 
+        void executeMove(int from, int to);
+
+        // En Passant
+        EnPassant ep_;
+        bool isWhiteTurn_ = true;
+
         // 0x88 style board representation
+        int wVal_ = 0;
+        int bVal_ = 0;
         uint8_t boardArr_[128] = {0};
         std::string fen_;
 };
+
+using BoardPtr = std::shared_ptr<Board>;
 
 

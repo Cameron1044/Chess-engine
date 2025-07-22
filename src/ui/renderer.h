@@ -10,6 +10,7 @@
 #include "chess.h"
 #include "engine/board.h"
 #include "ui/SDL_RAII.h"
+#include "engine/move.h"
 
 struct Color {
     int R = 0;
@@ -26,9 +27,10 @@ class Renderer {
         void endFrame();
 
         void drawBoard();
-        void drawSelection(const chess::Tile& tile, const Board& board, const std::vector<chess::Tile>& legalMoves);
-        void drawPieces(const Board& board, const std::optional<chess::Tile>& selectedTile = std::nullopt);
-        void drawPieceAtCoord(const Board& board, const chess::Tile& tile, const chess::Coord& coord);
+        void drawSelection(const BoardPtr& boardPtr, const chess::Tile& tile, const MoveList& legalMoves);
+        void drawPieces(const BoardPtr& boardPtr, const std::optional<chess::Tile>& selectedTile = std::nullopt);
+        void drawPieceAtCoord(const BoardPtr& boardPtr, const chess::Tile& tile, const chess::Coord& coord);
+        void drawEvalBar(int wValue, int bValue);
     
     private:
         void initSDL();
@@ -41,11 +43,14 @@ class Renderer {
         sdlw::WindowPtr window_;
         sdlw::RendererPtr renderer_;
 
+        // Sizes
+        const int evalBarWidth_ = 15;
+
         // Colors
-        Color lightTile_{235,236,208};
-        Color darkTile_{115,149,82};
-        Color lightTileSelected_{245,246,131};
-        Color darkTileSelected_{185,202,67};
+        const Color lightTile_{235,236,208};
+        const Color darkTile_{115,149,82};
+        const Color lightTileSelected_{245,246,131};
+        const Color darkTileSelected_{185,202,67};
 
         // Textures
         std::unordered_map<char, sdlw::TexturePtr> pieceTextures_;

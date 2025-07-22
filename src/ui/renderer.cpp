@@ -10,8 +10,8 @@
 namespace {
     // Helpers
     char pieceToChar(uint8_t pieceInt) {
-        uint8_t type = piece::getType(pieceInt);
-        char piece = piece::toChar(type);
+        const uint8_t type = piece::getType(pieceInt);
+        const char piece = piece::toChar(type);
         if (piece::isWhite(pieceInt)) {
             return piece;
         }
@@ -41,10 +41,12 @@ void Renderer::initSDL() {
         throw std::runtime_error("SDL_Init failed: " + std::string(SDL_GetError()));
 
     // Create window
+    const int w = chess::tileSize*8 + evalBarWidth_;
+    const int h = chess::tileSize*8;
     window_ = sdlw::WindowPtr{
         SDL_CreateWindow("Chess++", // window title
                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, // window location
-                         chess::tileSize*8, chess::tileSize*8, // window size
+                         w, h, // window size
                          windowFlags)
     };
     if (!window_) 
@@ -89,9 +91,9 @@ void Renderer::drawBoard() {
     }
 }
 
-void Renderer::drawSelection(const chess::Tile& tile, 
-                             const Board& board,
-                             const std::vector<chess::Tile>& legalMoves) {
+void Renderer::drawSelection(const BoardPtr& boardPtr,
+                             const chess::Tile& tile, 
+                             const MoveList& legalMoves) {
 
     // draw selection
     Color color = isDark(tile) ? darkTileSelected_ : lightTileSelected_;
@@ -99,15 +101,13 @@ void Renderer::drawSelection(const chess::Tile& tile,
 
     // draw legal moves of selected piece
     for (auto move : legalMoves) {
-        if (!board.isEmptyAt(move)) {
-            drawTile(move, {37, 150, 190});
-            continue;
-        }
-        drawTile(move, {218,11,56});
+        bool capture = move.isCapture();
+        Color color = capture ? Color{37, 150, 190} : Color{218,11,56};
+        drawTile(move.getToTile(), color);
     }
 }
 
-void Renderer::drawPieces(const Board& board, 
+void Renderer::drawPieces(const BoardPtr& boardPtr, 
                           const std::optional<chess::Tile>& selectedTile) {
 
     for (int file = 0; file < 8; ++file) {
@@ -115,7 +115,7 @@ void Renderer::drawPieces(const Board& board,
             chess::Tile tile{file, rank};
 
             // if no piece then keep going
-            if (board.isEmptyAt(tile)) 
+            if (boardPtr->isEmptyAt(tile)) 
                 continue;
 
             // don't draw piece at selected tile
@@ -123,20 +123,30 @@ void Renderer::drawPieces(const Board& board,
                 continue;
 
             // draw piece
-            char piece = pieceToChar(board.getPieceAt(tile));
+            char piece = pieceToChar(boardPtr->getPieceAt(tile));
             drawTextureOnTile(tile, pieceTextures_[piece]);
         }
     }
 }
 
-void Renderer::drawPieceAtCoord(const Board& board, 
+void Renderer::drawEvalBar(int wVal, int bVal) {
+    const int bH = chess::tileSize*8 * bVal / (wVal + bVal);
+
+    SDL_SetRenderDrawColor(renderer_.get(), 0, 0, 0, 255);
+
+    SDL_Rect Rect{chess::tileSize*8, 0, evalBarWidth_, bH};
+    SDL_RenderFillRect(renderer_.get(), 
+                       &Rect);
+}
+
+void Renderer::drawPieceAtCoord(const BoardPtr& boardPtr, 
                                 const chess::Tile& tile, 
                                 const chess::Coord& coord) {
 
-    char piece = pieceToChar(board.getPieceAt(tile));
+    const char piece = pieceToChar(boardPtr->getPieceAt(tile));
 
-    int x = coord.x - chess::tileSize/2;
-    int y = coord.y - chess::tileSize/2;
+    const int x = coord.x - chess::tileSize/2;
+    const int y = coord.y - chess::tileSize/2;
 
     drawTextureAtCoord(x, y, pieceTextures_[piece]);
 }
@@ -144,11 +154,11 @@ void Renderer::drawPieceAtCoord(const Board& board,
 void Renderer::drawTile(chess::Tile tile, 
                         const Color& C) {
 
-    int x = tile.file*chess::tileSize;
-    int y = abs(tile.rank - 7)*chess::tileSize;
+    const int x = tile.file*chess::tileSize;
+    const int y = abs(tile.rank - 7)*chess::tileSize;
 
-    int w = chess::tileSize;
-    int h = w;
+    const int w = chess::tileSize;
+    const int h = w;
 
     SDL_SetRenderDrawColor(renderer_.get(),
                            C.R, C.G, C.B,
@@ -166,8 +176,8 @@ void Renderer::drawTextureAtCoord(int x,
     if (!texture)
         throw std::runtime_error("drawTexture: nullptr texture");
 
-    int w = chess::tileSize;
-    int h = w;
+    const int w = chess::tileSize;
+    const int h = w;
 
     SDL_Rect rect{x, y, w, h};
     SDL_RenderCopy(renderer_.get(),
@@ -182,11 +192,11 @@ void Renderer::drawTextureOnTile(chess::Tile tile,
     if (!texture)
         throw std::runtime_error("drawTexture: nullptr texture");
 
-    int x = tile.file*chess::tileSize;
-    int y = abs(tile.rank - 7)*chess::tileSize;
+    const int x = tile.file*chess::tileSize;
+    const int y = abs(tile.rank - 7)*chess::tileSize;
 
-    int w = chess::tileSize;
-    int h = w;
+    const int w = chess::tileSize;
+    const int h = w;
 
     SDL_Rect rect{x, y, w, h};
     SDL_RenderCopy(renderer_.get(),

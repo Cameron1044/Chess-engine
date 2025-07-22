@@ -1,4 +1,5 @@
 #include "engine/moveGen.h"
+#include <stdexcept>
 
 /*
 0x88 Board Representation: 
@@ -29,154 +30,178 @@ constexpr std::array<int, 8> knightMoves = {U+UR, U+UL,
                                             UR+R, DR+R, 
                                             UL+L, DL+L};
 constexpr std::array<int, 8> kingMoves = {U, D, L, R, UR, UL, DR, DL};
+
 constexpr std::array<int, 4> lateralMoves = {U, D, L, R};
 constexpr std::array<int, 4> diagonalMoves = {UR, UL, DR, DL};
 constexpr std::array<int, 2> pawnCaptureMoves = {L, R};
 
-constexpr bool notOnBoard(int index) noexcept {return (index & 0x88);}
-constexpr bool onBoard(int index) noexcept {return !notOnBoard(index);}
+constexpr bool notOnBoard(int from) noexcept {return (from & 0x88);}
+constexpr bool onBoard(int from) noexcept {return !notOnBoard(from);}
 
 }
 
-void MoveGen::genLegalMovesAtTile(chess::Tile tile, const Board& board, std::vector<chess::Tile>& legalMoves) {
+void MoveGen::getPseudoMovesAtTile(chess::Tile tile, MoveList& legalMoves) const {
     legalMoves.clear();
-    std::vector<int> legalMovesInt = genLegalMovesAt(chess::indexOf(tile), board);
-    for (auto moveIndex : legalMovesInt) {
-        legalMoves.push_back(chess::tileOf(moveIndex));
+    MoveList tempLegalMoves = getPseudoMovesAt(chess::indexOf(tile));
+    for (auto move : tempLegalMoves) {
+        legalMoves.push_back(move);
     }
 }
 
-std::vector<int> MoveGen::genLegalMovesAt(int index, const Board& board) {
-    std::vector<int> legalmoves;
+MoveList MoveGen::getPseudoMovesAt(int from) const {
+    MoveList legalmoves;
 
-    switch (piece::getType(board.getPieceAt(index))) {
+    uint8_t piece = boardPtr_->getPieceAt(from);
+    if (piece::isWhite(piece) != boardPtr_->getIsWhite()) {
+        return legalmoves;
+    }
+
+    switch (piece::getType(piece)) {
         case piece::NONE: return {};
         case piece::PAWN: 
-            genPawn(index, legalmoves, board); 
+            addPseudoPawn(from, legalmoves); 
             break;
         case piece::KNIGHT: 
-            genKnight(index, legalmoves, board); 
+            addPseudoKnight(from, legalmoves); 
             break;
         case piece::BISHOP:
-            genBishop(index, legalmoves, board); 
+            addPseudoBishop(from, legalmoves); 
             break;
         case piece::ROOK: 
-            genRook(index, legalmoves, board); 
+            addPseudoRook(from, legalmoves); 
             break;
         case piece::QUEEN: 
-            genQueen(index, legalmoves, board); 
+            addPseudoQueen(from, legalmoves); 
             break;
         case piece::KING: 
-            genKing(index, legalmoves, board); 
+            addPseudoKing(from, legalmoves); 
             break;
         default: return {};
     }
     return legalmoves;
 }
 
-void MoveGen::genLateral(int index, std::vector<int>& legalmoves, const Board& board) {
-    uint8_t piece = board.getPieceAt(index);
+void MoveGen::addContinuousFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 4>& offsetList) const {
+    uint8_t piece = boardPtr_->getPieceAt(from);
 
-    for (auto move : lateralMoves) {
-        for (int d = 1; onBoard(index + d*move); ++d) {
-            int targetIndex = index + d*move;
-            uint8_t targetPiece = board.getPieceAt(targetIndex);
+    for (auto offset : offsetList) {
+        for (int d = 1; onBoard(from + d*offset); ++d) {
+            int to = from + d*offset;
+            uint8_t targetPiece = boardPtr_->getPieceAt(to);
+            Move move{from, to, piece};
 
-            if (!piece::sameTeam(piece, targetPiece)) {
-                legalmoves.push_back(targetIndex);
-            }
-
-            if (!board.isEmptyAt(targetIndex)) 
+            if (piece::sameTeam(piece, targetPiece))
                 break;
+
+            if (piece::diffTeam(piece, targetPiece)) {
+                move.setCaptureFlag();
+                legalmoves.push_back(move);
+                break;
+            }
+            legalmoves.push_back(move);
         }
     }
 }
 
-void MoveGen::genDiagonal(int index, std::vector<int>& legalmoves, const Board& board) {
-    uint8_t piece = board.getPieceAt(index);
+void MoveGen::addFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 8>& offsetList) const {
+    uint8_t piece = boardPtr_->getPieceAt(from);
 
-    for (auto move : diagonalMoves) {
-        for (int d = 1; onBoard(index + d*move); ++d) {
-            int targetIndex = index + d*move;
-            uint8_t targetPiece = board.getPieceAt(targetIndex);
+    for (auto offset : offsetList) {
+        int to = from + offset;
+        uint8_t targetPiece = boardPtr_->getPieceAt(to);
+        Move move{from, to, piece::getType(piece)};
 
-            if (!piece::sameTeam(piece, targetPiece)) {
-                legalmoves.push_back(targetIndex);
-            }
+        if (notOnBoard(to) || piece::sameTeam(piece, targetPiece)) 
+            continue;
 
-            if (!board.isEmptyAt(targetIndex)) 
-                break;
+        if (piece::diffTeam(piece, targetPiece)) {
+            move.setCaptureFlag();
         }
+        legalmoves.push_back(move);
     }
 }
 
-void MoveGen::genPawn(int index, std::vector<int>& legalmoves, const Board& board) {
-    uint8_t pawn = board.getPieceAt(index);
-    int dir = piece::isWhite(pawn) ? 1 : -1;
-    int dU = U*dir;
-    int dUU = dU + dU;
+void MoveGen::addPseudoPawn(int from, MoveList& legalmoves) const {
+    const uint8_t pawn = boardPtr_->getPieceAt(from);
+    const int dir = piece::isWhite(pawn) ? 1 : -1;
+    const int dU = U*dir;
+    const int dUU = dU + dU;
 
     for (auto horzDir : pawnCaptureMoves) {
-        int captureIndex = index + dU + horzDir;
+        const int to = from + horzDir + dU;
+        const uint8_t targetPiece = boardPtr_->getPieceAt(to);
 
-        if (notOnBoard(captureIndex)) 
+        if (notOnBoard(to) || piece::sameTeam(pawn, targetPiece)) 
             continue;
 
-        uint8_t targetPiece = board.getPieceAt(captureIndex);
-        if (!board.isEmptyAt(captureIndex) && !piece::sameTeam(pawn, targetPiece)) {
-            legalmoves.push_back(captureIndex);
+        Move captureMove{from, to, pawn};
+
+        if (piece::diffTeam(pawn, targetPiece)) {
+            captureMove.setCaptureFlag();
+            legalmoves.push_back(captureMove);
+        } else if (to == boardPtr_->getEp()) {
+            captureMove.setFlag(captureMove.EP_CAPTURE_FLAG);
+            legalmoves.push_back(captureMove);
         }
     }
 
-    if (board.isEmptyAt(index + dU)) {
-        legalmoves.push_back(index + dU);
+    if (boardPtr_->isEmptyAt(from + dU)) {
+        Move singleMove{from, from + dU, pawn};
+        legalmoves.push_back(singleMove);
 
-        if (!piece::hasMoved(pawn) && board.isEmptyAt(index + dUU)) {
-            legalmoves.push_back(index + dUU);
-        }
-    }
-}
-
-void MoveGen::genKnight(int index, std::vector<int>& legalmoves, const Board& board) {
-    uint8_t knight = board.getPieceAt(index);
-
-    for (auto move : knightMoves) {
-        if (notOnBoard(index + move)) 
-            continue;
-
-        int targetIndex = index + move;
-        uint8_t targetPiece = board.getPieceAt(targetIndex);
-
-        if (!piece::sameTeam(knight, targetPiece)) {
-            legalmoves.push_back(targetIndex);
+        if (!piece::hasMoved(pawn) && boardPtr_->isEmptyAt(from + dUU)) {
+            Move doubleMove{from, from + dUU, pawn};
+            doubleMove.setFlag(doubleMove.DOUBLE_PAWN_PUSH_FLAG);
+            legalmoves.push_back(doubleMove);
         }
     }
 }
 
-void MoveGen::genBishop(int index, std::vector<int>& legalmoves, const Board& board) {
-    genDiagonal(index, legalmoves, board);
+void MoveGen::addPseudoKnight(int from, MoveList& legalmoves) const {
+    addFromOffsetList(from, legalmoves, knightMoves);
 }
 
-void MoveGen::genRook(int index, std::vector<int>& legalmoves, const Board& board) {
-    genLateral(index, legalmoves, board);
+void MoveGen::addPseudoBishop(int from, MoveList& legalmoves) const {
+    addContinuousFromOffsetList(from, legalmoves, diagonalMoves);
 }
 
-void MoveGen::genQueen(int index, std::vector<int>& legalmoves, const Board& board) {
-    genLateral(index, legalmoves, board);
-    genDiagonal(index, legalmoves, board);
+void MoveGen::addPseudoRook(int from, MoveList& legalmoves) const {
+    addContinuousFromOffsetList(from, legalmoves, lateralMoves);
 }
 
-void MoveGen::genKing(int index, std::vector<int>& legalmoves, const Board& board) {
-    uint8_t king = board.getPieceAt(index);
+void MoveGen::addPseudoQueen(int from, MoveList& legalmoves) const {
+    addContinuousFromOffsetList(from, legalmoves, diagonalMoves);
+    addContinuousFromOffsetList(from, legalmoves, lateralMoves);
+}
 
-    for (auto move : kingMoves) {
-        if (notOnBoard(index + move)) continue;
+void MoveGen::addPseudoKing(int from, MoveList& legalmoves) const {
+    addFromOffsetList(from, legalmoves, kingMoves);
 
-        int targetIndex = index + move;
-        uint8_t targetPiece = board.getPieceAt(targetIndex);
+    const uint8_t king = boardPtr_->getPieceAt(from);
+    if (piece::hasMoved(king)) // king has moved, don't check for castle
+        return;
 
-        if (!piece::sameTeam(king, targetPiece)) {
-            legalmoves.push_back(targetIndex);
-        }
+    int kingSideRookPos = piece::isWhite(king) ? 0x07 : 0x77;
+    uint8_t kingSideRook = boardPtr_->getPieceAt(kingSideRookPos);
+    int queenSideRookPos = piece::isWhite(king) ? 0x00 : 0x70;
+    uint8_t queenSideRook = boardPtr_->getPieceAt(queenSideRookPos);
+    bool isEmptyBetween = false;
+
+    // kingside castle
+    isEmptyBetween = boardPtr_->isEmptyAt(from + 1) && boardPtr_->isEmptyAt(from + 2);
+    if (!piece::hasMoved(kingSideRook) && isEmptyBetween) {
+        int to = from + 2;
+        Move move{from, to, king};
+        move.setFlag(move.KING_CASTLE_FLAG);
+        legalmoves.push_back(move);
+    }
+
+    // queenside castle
+    isEmptyBetween = boardPtr_->isEmptyAt(from - 1) && boardPtr_->isEmptyAt(from - 2) && boardPtr_->isEmptyAt(from - 3);
+    if (!piece::hasMoved(queenSideRook) && isEmptyBetween) {
+        int to = from - 2;
+        Move move{from, to, king};
+        move.setFlag(move.QUEEN_CASTLE_FLAG);
+        legalmoves.push_back(move);
     }
 }

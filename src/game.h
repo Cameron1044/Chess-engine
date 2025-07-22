@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <SDL.h>
 #include <optional>
+#include <memory>
 
 struct Mouse {
     bool down = false;
@@ -24,13 +25,14 @@ class Game {
         void handleRelease(chess::Tile tile);
         bool attemptMakeMove(chess::Tile tile);
         
-        Board board_; //{"rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"};
-        // Board board_{"rnbqkbnr/8/8/8/8/8/8/RNBQKBNR w KQkq - 0 1"};
+        BoardPtr boardPtr_ = std::make_shared<Board>();
+        // "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+        // "rnbqkbnr/8/8/8/8/8/8/RNBQKBNR w KQkq - 0 1"
         Renderer view_;
-        MoveGen moveGen_;
+        MoveGen moveGen_{boardPtr_};
         Mouse mouse_;
         bool running_ = true;
 
         std::optional<chess::Tile> selection_;
-        std::vector<chess::Tile> selectionLegalMoves_;
+        MoveList selectionLegalMoves_;
 };

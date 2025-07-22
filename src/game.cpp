@@ -4,32 +4,35 @@
 
 void Game::run() {
     while(running_) {
-        view_.beginFrame();
-        view_.drawBoard();
-
         for (SDL_Event e; SDL_PollEvent(&e); ) {
             handleEvent(e);
         }
+        view_.beginFrame();
+        view_.drawBoard();
 
         if (selection_) {
-            view_.drawSelection(*selection_, board_, selectionLegalMoves_);
+            view_.drawSelection(boardPtr_, *selection_, selectionLegalMoves_);
         }
 
         if (selection_ && mouse_.down) {
-            view_.drawPieces(board_, selection_);
-            view_.drawPieceAtCoord(board_, *selection_, mouse_.coord);
+            view_.drawPieces(boardPtr_, selection_);
+            view_.drawPieceAtCoord(boardPtr_, *selection_, mouse_.coord);
         } else {
-            view_.drawPieces(board_);
+            view_.drawPieces(boardPtr_);
         }
+
+        view_.drawEvalBar(boardPtr_->getWEval(), boardPtr_->getBEval());
 
         view_.endFrame();
     }
 }
 
 bool Game::attemptMakeMove(chess::Tile tile) {
-    if (std::find(selectionLegalMoves_.begin(), selectionLegalMoves_.end(), tile) != selectionLegalMoves_.end()) {
-        board_.makeMove(*selection_, tile);
-        return true;
+    for (auto move : selectionLegalMoves_) {
+        if (move.getToTile() == tile) {
+            boardPtr_->makeMove(move);
+            return true;
+        }
     }
     return false;
 }
@@ -77,14 +80,14 @@ void Game::handleClick(chess::Tile tile) {
     }
 
     // Tile is empty. Deselect
-    if (board_.isEmptyAt(tile)) {
+        if (boardPtr_->isEmptyAt(tile)) {
         selection_.reset();
         return;
     }
 
     // Make selection. Generate moves
     selection_ = tile;
-    moveGen_.genLegalMovesAtTile(*selection_, board_, selectionLegalMoves_);
+    moveGen_.getPseudoMovesAtTile(*selection_, selectionLegalMoves_);
 }
 
 void Game::handleRelease(chess::Tile tile) {
