@@ -32,20 +32,29 @@ uint8_t Board::getPieceAt(chess::Tile tile) const {
     return getPieceAt(indexOf(tile));
 }
 
-void Board::handleEnPassant(Move move) {
+void Board::handleMakeEnPassant(Move move) {
     if (move.isEp()) {
         boardArr_[ep_.pawnPos] = piece::NONE;
+        ep_.canEp = false;
     } else if (move.isDoublePush()) {
         int offset = isWhiteTurn_ ? -0x10 : 0x10;
         ep_.pawnPos = move.getTo();
         ep_.epPos = ep_.pawnPos + offset;
+        ep_.canEp = true;
     } else {
-        ep_.pawnPos = -1;
-        ep_.epPos = -1;
+        ep_.canEp = false;
     }
 }
 
-void Board::handleCastle(Move move) {
+void Board::handleUnmakeEnPassant(Move move) {
+    if (move.isEp()) {
+        uint8_t color = isWhiteTurn_ ? piece::BLACK : piece::WHITE;
+        boardArr_[ep_.pawnPos] = piece::PAWN | color | piece::HAS_MOVED;
+        ep_.canEp = true;
+    }
+}
+
+void Board::handleMakeCastle(Move move) {
     if (move.isKingCastle()) {
         int kingSideRookPos = isWhiteTurn_ ? 0x07 : 0x77;
         uint8_t kingSideRook = boardArr_[kingSideRookPos];
@@ -59,27 +68,74 @@ void Board::handleCastle(Move move) {
     }
 }
 
+void Board::handleUnmakeCastle(Move move) {
+    if (move.isKingCastle()) {
+        int kingSideRookPos = isWhiteTurn_ ? 0x07 : 0x77;
+        uint8_t kingSideRook = boardArr_[kingSideRookPos - 2];
+        boardArr_[kingSideRookPos - 2] = piece::NONE;
+        boardArr_[kingSideRookPos] = kingSideRook ^= piece::HAS_MOVED_MASK;
+    } else if (move.isQueenCastle()) {
+        int queenSideRookPos = isWhiteTurn_ ? 0x00 : 0x70;
+        uint8_t queenSideRook = boardArr_[queenSideRookPos + 3];
+        boardArr_[queenSideRookPos + 3] = piece::NONE;
+        boardArr_[queenSideRookPos] = queenSideRook ^= piece::HAS_MOVED_MASK;
+    }
+}
+
 
 
 void Board::makeMove(Move move) {
-    move.printMove();
+    // move.printMove();
     // std::cout << std::dec << (move.getFlags() & move.QUEEN_CASTLE_FLAG) << "\n";
     // std::cout << move.isQueenCastle() << " " << move.isKingCastle() << "\n";
     int src = move.getFrom();
     int dst = move.getTo();
 
-    handleEnPassant(move);
-    handleCastle(move);
-
-    if (!isEmptyAt(dst)) {
-        if (piece::isWhite(boardArr_[dst])) {
-            wVal_ -= piece::valueOf(boardArr_[dst]);
-        } else {
-            bVal_ -= piece::valueOf(boardArr_[dst]);
-        }
-    }
+    handleMakeEnPassant(move);
+    handleMakeCastle(move);
 
     executeMove(src, dst);
+}
+
+void Board::unmakeMove(Move move) {
+    int src = move.getFrom();
+    int dst = move.getTo();
+
+    if (move.isQuiet()) {
+        executeMove(dst, src);
+        if (move.isFirstMove()) {
+            boardArr_[src] = boardArr_[src] ^= piece::HAS_MOVED_MASK;
+        }
+        return;
+    }
+
+    if (move.isDoublePush()) {
+        executeMove(dst, src);
+        boardArr_[src] = boardArr_[src] ^= piece::HAS_MOVED_MASK;
+        ep_.canEp = false; // TEMP
+        return;
+    }
+
+    if (move.isCastle()) {
+        executeMove(dst, src);
+        boardArr_[src] = boardArr_[src] ^= piece::HAS_MOVED_MASK;
+        handleUnmakeCastle(move);
+        return;
+    }
+
+    if (move.isEp()) {
+        move.printMove();
+        executeMove(dst, src);
+        handleUnmakeEnPassant(move);
+        return;
+    }
+
+    if (move.isCapture()) {
+        executeMove(dst, src);
+        uint8_t color = isWhiteTurn_ ? piece::BLACK : piece::WHITE;
+        uint8_t hasMoved = move.hasCapturedPieceMoved() ? piece::HAS_MOVED : 0;
+        boardArr_[dst] = static_cast<uint8_t>(move.getCapturePieceType()) | color | hasMoved;
+    }
 }
 
 void Board::executeMove(int from, int to) {

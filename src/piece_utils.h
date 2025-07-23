@@ -4,6 +4,11 @@
 
 namespace piece {
 
+// enum class Color : uint8_t {
+//     WHITE = 0,
+
+// };
+
 constexpr inline uint8_t TYPE_MASK = 0b0000'0111;
 constexpr inline uint8_t TEAM_MASK = 0b0000'1000;
 constexpr inline uint8_t HAS_MOVED_MASK = 0b0001'0000;

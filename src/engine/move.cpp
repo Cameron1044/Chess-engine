@@ -6,7 +6,7 @@
 void Move::printMove() {
     int to = getTo();
     int from = getFrom();
-    std::bitset<4> flags = getFlags();
+    std::bitset<6> flags = getFlags();
     std::bitset<3> pieceType = getPieceType();
     std::bitset<3> capturePieceType = getCapturePieceType();
 

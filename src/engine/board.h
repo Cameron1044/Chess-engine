@@ -25,6 +25,7 @@
 struct EnPassant {
     int epPos = 0;
     int pawnPos = 0;
+    bool canEp = false;
 };
 
 // struct UnMakeMove {
@@ -39,16 +40,20 @@ class Board {
         uint8_t getPieceAt(int Index) const;
         uint8_t getPieceAt(chess::Tile tile) const;
         void makeMove(Move move);
+        void unmakeMove(Move move);
 
         int getWEval() {return wVal_;}
         int getBEval() {return bVal_;}
 
         int getEp() {return ep_.epPos;}
-        bool getIsWhite() {return isWhiteTurn_;}
+        bool canEp() {return ep_.canEp;}
+        bool getColorToPlay() {return isWhiteTurn_;}
         
     private:
-        void handleEnPassant(Move move);
-        void handleCastle(Move move);
+        void handleMakeEnPassant(Move move);
+        void handleUnmakeEnPassant(Move move);
+        void handleMakeCastle(Move move);
+        void handleUnmakeCastle(Move move);
         void validateFen();
         void initializeFromFen();
 

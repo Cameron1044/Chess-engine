@@ -85,7 +85,7 @@ void Renderer::drawBoard() {
 
             chess::Tile tile{file, rank};
 
-            Color tileColor = isDark(tile) ? darkTile_ : lightTile_;
+            RGB tileColor = isDark(tile) ? darkTile_ : lightTile_;
             drawTile(tile, tileColor);
         }
     }
@@ -96,13 +96,13 @@ void Renderer::drawSelection(const BoardPtr& boardPtr,
                              const MoveList& legalMoves) {
 
     // draw selection
-    Color color = isDark(tile) ? darkTileSelected_ : lightTileSelected_;
+    RGB color = isDark(tile) ? darkTileSelected_ : lightTileSelected_;
     drawTile(tile, color);
 
     // draw legal moves of selected piece
     for (auto move : legalMoves) {
         bool capture = move.isCapture();
-        Color color = capture ? Color{37, 150, 190} : Color{218,11,56};
+        RGB color = capture ? RGB{37, 150, 190} : RGB{218,11,56};
         drawTile(move.getToTile(), color);
     }
 }
@@ -152,7 +152,7 @@ void Renderer::drawPieceAtCoord(const BoardPtr& boardPtr,
 }
 
 void Renderer::drawTile(chess::Tile tile, 
-                        const Color& C) {
+                        const RGB& C) {
 
     const int x = tile.file*chess::tileSize;
     const int y = abs(tile.rank - 7)*chess::tileSize;

@@ -12,8 +12,17 @@ class MoveGen {
         MoveGen(Board board) : boardPtr_(std::make_shared<Board>(board)) {}
         MoveGen(BoardPtr boardPtr) : boardPtr_(boardPtr) {}
 
-        void getPseudoMovesAtTile(chess::Tile tile, MoveList& legalMoves) const;
-        MoveList getPseudoMovesAt(int from) const;
+        bool isMoveLegal(const Move& move);
+        bool isKingChecked() const;
+
+        MoveList generateLegalMoves() {return generateLegalMoves(boardPtr_->getColorToPlay());};
+        MoveList generateLegalMoves(bool color);
+
+        MoveList generateLegalMovesOf(chess::Tile tile) {return generateLegalMovesOf(chess::indexOf(tile));};
+        MoveList generateLegalMovesOf(int from);
+
+        MoveList generatePseudoMoves() const {return generatePseudoMoves(boardPtr_->getColorToPlay());};
+        MoveList generatePseudoMoves(bool color) const;
 
         // getters
         // MoveList getPseudoPawn(int from, MoveList& legalmoves) const;
@@ -22,13 +31,18 @@ class MoveGen {
         // MoveList getPseudoRook(int from, MoveList& legalmoves) const;
         // MoveList getPseudoQueen(int from, MoveList& legalmoves) const;
         // MoveList getPseudoKing(int from, MoveList& legalmoves) const;
+        static constexpr uint8_t MAX_LEGAL_MOVES = 218;
 
     private:
+        // helpers
+        static void swapAndPop(MoveList& moves, uint8_t index);
+
         // appender helpers
         void addContinuousFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 4>& offsetList) const;
         void addFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 8>& offsetList) const;
 
         // appenders
+        void addPseudoMovesAt(int from, MoveList& legalMoves, bool color) const;
         void addPseudoPawn(int from, MoveList& legalmoves) const;
         void addPseudoKnight(int from, MoveList& legalmoves) const;
         void addPseudoBishop(int from, MoveList& legalmoves) const;

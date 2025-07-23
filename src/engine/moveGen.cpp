@@ -40,48 +40,129 @@ constexpr bool onBoard(int from) noexcept {return !notOnBoard(from);}
 
 }
 
-void MoveGen::getPseudoMovesAtTile(chess::Tile tile, MoveList& legalMoves) const {
-    legalMoves.clear();
-    MoveList tempLegalMoves = getPseudoMovesAt(chess::indexOf(tile));
-    for (auto move : tempLegalMoves) {
-        legalMoves.push_back(move);
+void MoveGen::swapAndPop(MoveList& moves, uint8_t index) {
+    if (index > moves.size() - 1) {
+        throw std::runtime_error(std::format("index our of range error: SwapAndPop recieved index of {} for a vector of size {}", index, moves.size()));
+    }
+
+    if (moves.size() > 1) {
+        std::iter_swap(moves.begin() + index, moves.end() - 1);
+        moves.pop_back();
+    } else {
+        moves.clear();
     }
 }
 
-MoveList MoveGen::getPseudoMovesAt(int from) const {
-    MoveList legalmoves;
+bool MoveGen::isMoveLegal(const Move& move) {
+    bool isMoveLegal = true;
+    boardPtr_->makeMove(move);
 
-    uint8_t piece = boardPtr_->getPieceAt(from);
-    if (piece::isWhite(piece) != boardPtr_->getIsWhite()) {
-        return legalmoves;
+    if (isKingChecked()) {
+        isMoveLegal = false;
+    }
+
+    boardPtr_->unmakeMove(move);
+    return isMoveLegal;
+}
+
+
+bool MoveGen::isKingChecked() const {
+    const bool color = boardPtr_->getColorToPlay();
+    MoveList moveList = generatePseudoMoves(color);
+
+    for (auto move : moveList) {
+        if (move.getCapturePieceType() == piece::KING) {
+            return true;
+        }
+    }
+    return false;
+}
+
+MoveList MoveGen::generateLegalMoves(bool color) {
+
+    MoveList moves = generatePseudoMoves(color);
+
+    if (moves.empty()) {
+        return moves;
+    }
+
+    for (uint8_t i = 0; i < MAX_LEGAL_MOVES; ++i) {
+        Move move = moves[i];
+
+        if (!isMoveLegal(move)) {
+            swapAndPop(moves, i);
+        }
+
+        if (i >= moves.size()) {
+            break;
+        }
+    }
+
+	return moves;
+}
+
+MoveList MoveGen::generateLegalMovesOf(int from) {
+    MoveList moves;
+    const bool color = boardPtr_->getColorToPlay();
+    addPseudoMovesAt(from, moves, color);
+    
+    for (uint8_t i = 0; i < MAX_LEGAL_MOVES; ++i) {
+        if (i >= moves.size())
+            break;
+
+        Move move = moves[i];
+
+        if (!isMoveLegal(move)) {
+            swapAndPop(moves, i);
+        }
+    }
+
+	return moves;
+}
+
+MoveList MoveGen::generatePseudoMoves(bool color) const {
+    MoveList pseudoMoves;
+    pseudoMoves.reserve(MAX_LEGAL_MOVES);
+
+    for (int i = 0; i < 64; ++i) {
+        int sq0x88 = i + (i & ~7);
+        addPseudoMovesAt(i, pseudoMoves, color);
+    }
+
+    return pseudoMoves;
+}
+
+void MoveGen::addPseudoMovesAt(int from, MoveList& legalMoves, bool color) const {
+    const uint8_t piece = boardPtr_->getPieceAt(from);
+    if (piece::isWhite(piece) != color) {
+        return;
     }
 
     switch (piece::getType(piece)) {
-        case piece::NONE: return {};
+        case piece::NONE: return;
         case piece::PAWN: 
-            addPseudoPawn(from, legalmoves); 
+            addPseudoPawn(from, legalMoves); 
             break;
         case piece::KNIGHT: 
-            addPseudoKnight(from, legalmoves); 
+            addPseudoKnight(from, legalMoves); 
             break;
         case piece::BISHOP:
-            addPseudoBishop(from, legalmoves); 
+            addPseudoBishop(from, legalMoves); 
             break;
         case piece::ROOK: 
-            addPseudoRook(from, legalmoves); 
+            addPseudoRook(from, legalMoves); 
             break;
         case piece::QUEEN: 
-            addPseudoQueen(from, legalmoves); 
+            addPseudoQueen(from, legalMoves); 
             break;
         case piece::KING: 
-            addPseudoKing(from, legalmoves); 
+            addPseudoKing(from, legalMoves); 
             break;
-        default: return {};
+        default: return;
     }
-    return legalmoves;
 }
 
-void MoveGen::addContinuousFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 4>& offsetList) const {
+void MoveGen::addContinuousFromOffsetList(int from, MoveList& legalMoves, const std::array<int, 4>& offsetList) const {
     uint8_t piece = boardPtr_->getPieceAt(from);
 
     for (auto offset : offsetList) {
@@ -95,33 +176,35 @@ void MoveGen::addContinuousFromOffsetList(int from, MoveList& legalmoves, const 
 
             if (piece::diffTeam(piece, targetPiece)) {
                 move.setCaptureFlag();
-                legalmoves.push_back(move);
+                move.setCapturePieceType(targetPiece);
+                legalMoves.push_back(move);
                 break;
             }
-            legalmoves.push_back(move);
+            legalMoves.push_back(move);
         }
     }
 }
 
-void MoveGen::addFromOffsetList(int from, MoveList& legalmoves, const std::array<int, 8>& offsetList) const {
+void MoveGen::addFromOffsetList(int from, MoveList& legalMoves, const std::array<int, 8>& offsetList) const {
     uint8_t piece = boardPtr_->getPieceAt(from);
 
     for (auto offset : offsetList) {
         int to = from + offset;
         uint8_t targetPiece = boardPtr_->getPieceAt(to);
-        Move move{from, to, piece::getType(piece)};
+        Move move{from, to, piece};
 
         if (notOnBoard(to) || piece::sameTeam(piece, targetPiece)) 
             continue;
 
         if (piece::diffTeam(piece, targetPiece)) {
             move.setCaptureFlag();
+            move.setCapturePieceType(targetPiece);
         }
-        legalmoves.push_back(move);
+        legalMoves.push_back(move);
     }
 }
 
-void MoveGen::addPseudoPawn(int from, MoveList& legalmoves) const {
+void MoveGen::addPseudoPawn(int from, MoveList& legalMoves) const {
     const uint8_t pawn = boardPtr_->getPieceAt(from);
     const int dir = piece::isWhite(pawn) ? 1 : -1;
     const int dU = U*dir;
@@ -138,44 +221,45 @@ void MoveGen::addPseudoPawn(int from, MoveList& legalmoves) const {
 
         if (piece::diffTeam(pawn, targetPiece)) {
             captureMove.setCaptureFlag();
-            legalmoves.push_back(captureMove);
-        } else if (to == boardPtr_->getEp()) {
+            captureMove.setCapturePieceType(targetPiece);
+            legalMoves.push_back(captureMove);
+        } else if (boardPtr_->canEp() && (to == boardPtr_->getEp())) {
             captureMove.setFlag(captureMove.EP_CAPTURE_FLAG);
-            legalmoves.push_back(captureMove);
+            legalMoves.push_back(captureMove);
         }
     }
 
     if (boardPtr_->isEmptyAt(from + dU)) {
         Move singleMove{from, from + dU, pawn};
-        legalmoves.push_back(singleMove);
+        legalMoves.push_back(singleMove);
 
         if (!piece::hasMoved(pawn) && boardPtr_->isEmptyAt(from + dUU)) {
             Move doubleMove{from, from + dUU, pawn};
             doubleMove.setFlag(doubleMove.DOUBLE_PAWN_PUSH_FLAG);
-            legalmoves.push_back(doubleMove);
+            legalMoves.push_back(doubleMove);
         }
     }
 }
 
-void MoveGen::addPseudoKnight(int from, MoveList& legalmoves) const {
-    addFromOffsetList(from, legalmoves, knightMoves);
+void MoveGen::addPseudoKnight(int from, MoveList& legalMoves) const {
+    addFromOffsetList(from, legalMoves, knightMoves);
 }
 
-void MoveGen::addPseudoBishop(int from, MoveList& legalmoves) const {
-    addContinuousFromOffsetList(from, legalmoves, diagonalMoves);
+void MoveGen::addPseudoBishop(int from, MoveList& legalMoves) const {
+    addContinuousFromOffsetList(from, legalMoves, diagonalMoves);
 }
 
-void MoveGen::addPseudoRook(int from, MoveList& legalmoves) const {
-    addContinuousFromOffsetList(from, legalmoves, lateralMoves);
+void MoveGen::addPseudoRook(int from, MoveList& legalMoves) const {
+    addContinuousFromOffsetList(from, legalMoves, lateralMoves);
 }
 
-void MoveGen::addPseudoQueen(int from, MoveList& legalmoves) const {
-    addContinuousFromOffsetList(from, legalmoves, diagonalMoves);
-    addContinuousFromOffsetList(from, legalmoves, lateralMoves);
+void MoveGen::addPseudoQueen(int from, MoveList& legalMoves) const {
+    addContinuousFromOffsetList(from, legalMoves, diagonalMoves);
+    addContinuousFromOffsetList(from, legalMoves, lateralMoves);
 }
 
-void MoveGen::addPseudoKing(int from, MoveList& legalmoves) const {
-    addFromOffsetList(from, legalmoves, kingMoves);
+void MoveGen::addPseudoKing(int from, MoveList& legalMoves) const {
+    addFromOffsetList(from, legalMoves, kingMoves);
 
     const uint8_t king = boardPtr_->getPieceAt(from);
     if (piece::hasMoved(king)) // king has moved, don't check for castle
@@ -193,7 +277,7 @@ void MoveGen::addPseudoKing(int from, MoveList& legalmoves) const {
         int to = from + 2;
         Move move{from, to, king};
         move.setFlag(move.KING_CASTLE_FLAG);
-        legalmoves.push_back(move);
+        legalMoves.push_back(move);
     }
 
     // queenside castle
@@ -202,6 +286,6 @@ void MoveGen::addPseudoKing(int from, MoveList& legalmoves) const {
         int to = from - 2;
         Move move{from, to, king};
         move.setFlag(move.QUEEN_CASTLE_FLAG);
-        legalmoves.push_back(move);
+        legalMoves.push_back(move);
     }
 }

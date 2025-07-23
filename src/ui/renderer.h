@@ -12,12 +12,6 @@
 #include "ui/SDL_RAII.h"
 #include "engine/move.h"
 
-struct Color {
-    int R = 0;
-    int G = 0;
-    int B = 0;
-};
-
 class Renderer {
     public:
         Renderer() {initSDL();}
@@ -33,10 +27,12 @@ class Renderer {
         void drawEvalBar(int wValue, int bValue);
     
     private:
+        struct RGB {int R, G, B;};
+
         void initSDL();
 
         // Draw helpers
-        void drawTile(chess::Tile tile, const Color& C);
+        void drawTile(chess::Tile tile, const RGB& C);
         void drawTextureAtCoord(int x, int y, const sdlw::TexturePtr& texture);
         void drawTextureOnTile(chess::Tile tile, const sdlw::TexturePtr& texture);
 
@@ -47,10 +43,10 @@ class Renderer {
         const int evalBarWidth_ = 15;
 
         // Colors
-        const Color lightTile_{235,236,208};
-        const Color darkTile_{115,149,82};
-        const Color lightTileSelected_{245,246,131};
-        const Color darkTileSelected_{185,202,67};
+        const RGB lightTile_{235,236,208};
+        const RGB darkTile_{115,149,82};
+        const RGB lightTileSelected_{245,246,131};
+        const RGB darkTileSelected_{185,202,67};
 
         // Textures
         std::unordered_map<char, sdlw::TexturePtr> pieceTextures_;

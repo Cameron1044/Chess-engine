@@ -31,6 +31,7 @@ bool Game::attemptMakeMove(chess::Tile tile) {
     for (auto move : selectionLegalMoves_) {
         if (move.getToTile() == tile) {
             boardPtr_->makeMove(move);
+            // std::cout << moveGen_.kingIsChecked() << "\n";
             return true;
         }
     }
@@ -87,7 +88,7 @@ void Game::handleClick(chess::Tile tile) {
 
     // Make selection. Generate moves
     selection_ = tile;
-    moveGen_.getPseudoMovesAtTile(*selection_, selectionLegalMoves_);
+    selectionLegalMoves_ = moveGen_.generateLegalMovesOf(*selection_);
 }
 
 void Game::handleRelease(chess::Tile tile) {
